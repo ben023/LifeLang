@@ -12,7 +12,7 @@ LifeLang is a language to simulate a person walking through life. It is an imper
 Load the module Lifelang
 Programs can be defined using the constructor Define. Define will take a varaible and a program and assign a program to that variable reference. Programs must consist of a list of commands.  
 Good commands: \
-Define x [Jump, Jump, Jump, Rest, Eat]
+Define x [Jump, Jump, Jump, Rest, Eat]  
 Run x\
 This will output a Success with a final position 
                
