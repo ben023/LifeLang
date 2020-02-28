@@ -20,12 +20,19 @@ data Result = OK HState
             | Dead Pos
 
 data Cmd = Jump
-         | Rest Int
-         | Eat Int
-         | Damage HState OState
+         | Rest
+         | Eat
+         | Damage
+    deriving(Eq,Show)
+
+cmd :: Cmd -> HState -> Result
+cmd Jump    (p, h, s, f)     = OK (p+2,h,s,f)
+cmd Rest    (p,h,s,f)        = OK (p, h+10, s, f)
+cmd Eat     (p, h, s, f)     = OK (p, h+10, s, f)
+cmd Damage  (p, h, s, f)     = OK (p, h-10, s, f)
 
 prog :: Prog -> HState -> Result
-prog []     s = OK HState
+prog []     s = OK s
 prog (c:cs) s = case cmd c s of
                 OK s' -> prog cs s'
-                Dead  -> Dead
+                Dead s' -> Dead s'
