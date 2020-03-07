@@ -24,9 +24,11 @@ data Cmd = Jump
 
 cmd :: Cmd -> HState -> Result
 cmd Jump    (p, h, s)     = OK (p+2, h, s-10)
+cmd Jump    (p, h, 0)     = Dead p
 cmd Rest    (p, h, s)     = OK (p, h+10, s+5)
 cmd Eat     (p, h, s)     = OK (p, h+10, s+5)
 cmd Damage  (p, h, s)     = OK (p, h-10, s)
+cmd Damage  (p, 0, s)     = Dead p
 
 prog :: Prog -> HState -> Result
 prog []     s = OK s
