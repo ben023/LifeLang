@@ -9,15 +9,12 @@ type Lethal = Int
 
 type Prog = [Cmd]
 
-data Feet = Up
-          | Down
-          deriving (Eq, Show)
-
-type HState = (Pos, Health, Stamina, Feet)
+type HState = (Pos, Health, Stamina)
 type OState = (Pos, Lethal)
 
 data Result = OK HState
             | Dead Pos
+        deriving(Eq, Show)
 
 data Cmd = Jump
          | Rest
@@ -26,10 +23,10 @@ data Cmd = Jump
     deriving(Eq,Show)
 
 cmd :: Cmd -> HState -> Result
-cmd Jump    (p, h, s, f)     = OK (p+2,h,s,f)
-cmd Rest    (p,h,s,f)        = OK (p, h+10, s, f)
-cmd Eat     (p, h, s, f)     = OK (p, h+10, s, f)
-cmd Damage  (p, h, s, f)     = OK (p, h-10, s, f)
+cmd Jump    (p, h, s)     = OK (p+2, h, s-10)
+cmd Rest    (p, h, s)     = OK (p, h+10, s+5)
+cmd Eat     (p, h, s)     = OK (p, h+10, s+5)
+cmd Damage  (p, h, s)     = OK (p, h-10, s)
 
 prog :: Prog -> HState -> Result
 prog []     s = OK s
