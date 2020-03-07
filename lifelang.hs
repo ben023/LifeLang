@@ -24,7 +24,8 @@ data Cmd = Jump
 
 cmd :: Cmd -> HState -> Result
 cmd Jump    (p, h, s)     = OK (p+2, h, s-10)
-cmd Jump    (p, h, 0)     = Dead p
+cmd Jump    (p, h, 0)     = OK (p+2, h-10, 0)
+cmd Jump    (p, 0, _)     = Dead p
 cmd Rest    (p, h, s)     = OK (p, h+10, s+5)
 cmd Eat     (p, h, s)     = OK (p, h+10, s+5)
 cmd Damage  (p, h, s)     = OK (p, h-10, s)
