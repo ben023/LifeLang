@@ -1,6 +1,8 @@
 module Lifelang where
 
-import           Data.List
+import Data.Map (Map,fromList,lookup,insert)
+import Data.Maybe (fromJust)
+import Prelude hiding (lookup)
 
 type Pos = Int
 type Health = Int
@@ -44,4 +46,56 @@ exTemplate = P [("restTime", TInt), ("startingState", THState)]
                 ])
             ])
 
+type Env a = Map Var a
 
+typeExpr :: Expr -> Env Type -> Maybe Type
+typeExpr (Lit _) _ = Just TInt
+typeExpr (State _) _ = Just THState
+typeExpr (IsAlive x) m = case (typeExpr x m) of
+                            (Just THState) -> Just TBool
+                            _              -> Nothing
+typeExpr (Walk x) m = case (typeExpr x m) of
+                            (Just THState) -> Just THState
+                            _              -> Nothing
+typeExpr (Rest x y) m = case (typeExpr x m, typeExpr y m) of
+                            (Just THState, Just TInt) -> Just THState
+                            _              -> Nothing
+typeExpr (Ref v)   m  = lookup v m
+
+
+typeStmt :: Stmt -> Env Type -> Bool
+typeStmt (Bind v e)   m = case (lookup v m, typeExpr e m) of
+                            (Just tv, Just te) -> tv == te
+                            _ -> False
+typeStmt (While c sb) m = case typeExpr c m of
+                            Just TBool -> typeStmt sb m
+                            _ -> False
+typeStmt (Block ss)   m = all (\s -> typeStmt s m) ss
+
+
+typeProg :: Prog -> Bool
+typeProg (P ds s) = typeStmt s (fromList ds)
+
+data Val = I Int | B Bool | HS HState
+  deriving (Eq,Show)
+
+
+evalExpr :: Expr -> Env Val -> Val
+evalExpr (Lit i) _ = I i
+evalExpr (State s) _ = HS s
+evalExpr (IsAlive x) m = B (evalHState x m)
+evalExpr (Walk x) m = HS (evalHState x m)
+evalExpr (Rest x y) m = HS (evalHState )
+
+evalInt :: Expr -> Env Val -> Int
+evalInt e m = case evalExpr e m of
+                Left i  -> i
+                Right _ -> error "internal error: expected Int got Bool"
+
+evalBool :: Expr -> Env Val -> Bool
+evalBool e m = case evalExpr e m of
+                 Right b -> b
+                 Left _  -> error "internal error: expected Bool got Int"
+
+evalHState :: Expr -> Env Val -> HState
+evalHState ->
