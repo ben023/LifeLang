@@ -23,6 +23,8 @@ data Exp = Dec HState
          | Lit Int
          | Damage Exp Exp
          | Eat Exp Exp
+         | Rest Exp Exp
+         | Walk Exp Exp
          | HasStamina Exp
          | IsAlive Exp
          | Ref String
@@ -61,7 +63,9 @@ ex2 = P [("startState", HState)]
           While (IsAlive (Ref "startState"))
           (Block [
               Bind "startState" (Damage (Ref "startState") (Lit 10)),
-              Bind "startState" (Eat (Ref "startState") (Lit 7))
+              Bind "startState" (Eat (Ref "startState") (Lit 7)),
+              Bind "startState" (Walk (Ref "startState") (Lit 5)),
+              Bind "startState" (Rest (Ref "startState") (Lit 1))
           ])
 
         ])
@@ -75,6 +79,12 @@ typeExpr (Damage e1 e2)   m  =  case (typeExpr e1 m, typeExpr e2 m) of
                                    (Just HState, Just TInt) -> Just HState
                                    _ -> Nothing
 typeExpr (Eat e1 e2)   m  =  case (typeExpr e1 m, typeExpr e2 m) of
+                                  (Just HState, Just TInt) -> Just HState
+                                  _ -> Nothing
+typeExpr (Rest e1 e2)   m  =  case (typeExpr e1 m, typeExpr e2 m) of
+                                  (Just HState, Just TInt) -> Just HState
+                                  _ -> Nothing
+typeExpr (Walk e1 e2)   m  =  case (typeExpr e1 m, typeExpr e2 m) of
                                   (Just HState, Just TInt) -> Just HState
                                   _ -> Nothing
 typeExpr (HasStamina e)   m  = case (typeExpr e m) of
@@ -114,6 +124,10 @@ evalExpr (Damage e damageDone) m
                           | (p, h, s) <- evalHS e m = HS (p, h-(evalInt damageDone m), s)
 evalExpr (Eat e healthGained) m
                           | (p, h, s) <- evalHS e m = HS (p, h+(evalInt healthGained m), s)
+evalExpr (Rest e staminaGained) m
+                          | (p, h, s) <- evalHS e m = HS (p, h, s+(evalInt staminaGained m))
+evalExpr (Walk e distanceGained) m
+                          | (p, h, s) <- evalHS e m = HS (p+(evalInt distanceGained m), h, s-(evalInt distanceGained m))
 evalExpr (HasStamina e) m
                           | (p, h, s) <- evalHS e m = B (s > 0)
                           | _ <- evalHS e m = B False
