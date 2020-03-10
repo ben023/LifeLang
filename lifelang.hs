@@ -16,42 +16,43 @@ data Result = OK HState
 
 
 data Exp = Dec HState
-         | Rest Exp Int
-         | Eat Exp Int
+--         | Var String
+         | Lit Int
+--         | Rest Exp Int
+--         | Eat Exp Int
          | Damage Exp Int
          | HasStamina Exp
-         | If Exp Exp Exp
+--         | If Exp Exp Exp
+         | Ref Exp
+
+   deriving(Eq,Show)
+
+
+
+data Stmt = Bind String Exp
+          | If Exp Stmt Stmt
+          | While Exp Stmt
+          | Block [Stmt]
     deriving(Eq,Show)
 
+--prog :: Prog -> HState -> Result
+--prog [] _ = (OK HState)
+--prog (x:xs) (y) = prog xs (sem Dec y)
 
+data Type = TInt | TBool | HState
 
-sem :: Exp -> Result
-sem (Dec hstate) = OK hstate
-sem (Rest e v) = case (sem e) of
-                   (OK (pos, health, stamina)) -> (OK (pos, health, stamina+v))
-                   _ -> Error
-sem (Eat e v) = case (sem e) of
-                   (OK (pos, health, stamina)) -> (OK (pos, health+v, stamina))
-                   _ -> Error
-sem (Damage e v) = case (sem e) of
-                   (OK (pos, health, stamina)) -> if (health-v) <= 0 then (Dead pos) else OK (pos, health-v, stamina)
-                   _ -> Error
-sem (HasStamina e) = case (sem e) of
-                   (OK (pos, health, stamina)) -> B (stamina <= 0)
-                   _ -> Error
-sem (If e1 e2 e3) = case (sem e1) of
-                      B True -> sem e2
-                      B False -> sem e3
-                      _ -> Error
+type Decl = (Var, Type)
 
--- good example:
+data Prog = P [Decl] Stmt
 
-
-ex1 :: Exp
-ex1 = Rest (Dec (0, 0, 0)) 10
--- Should return OK (0, 0, 10)
-
--- bad example:
-ex4 :: Exp
-ex4 = If (Dec (0, 0, 0)) (Damage (Dec (0, 0, 0)) 3) (Eat (Dec (0, 0, 0)) 3)
--- Should return Error
+ex1 :: Prog
+ex1 = P [("restTime", TInt), ("startState", HState)]
+        (Block [
+           Bind "restTime" (Lit 5),
+           Bind "startState" (0,100,100),
+           While (HasStamina (Ref "startState"))
+           (Block [
+               Bind "startState" (Damage (Ref "startState") (Lit 10)),
+               Bind "startState" (Damage (Ref "startState") (Lit 10))
+           ])
+        ])
