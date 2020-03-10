@@ -1,6 +1,9 @@
 module Lifelang where
 
-import           Data.List
+import Data.Map (Map,fromList,lookup,insert)
+import Data.Maybe
+import Prelude hiding (lookup)
+--import           Data.List
 
 type Pos = Int
 type Health = Int
@@ -8,26 +11,21 @@ type Stamina = Int
 
 type HState = (Pos, Health, Stamina)
 
-data Result = OK HState
-            | Dead Pos
-            | Error
-            | B Bool
-        deriving(Eq, Show)
+--data Result = OK HState
+--            | Dead Pos
+--            | Error
+--            | B Bool
+--        deriving(Eq, Show)
 
+type Var = String
 
 data Exp = Dec HState
---         | Var String
          | Lit Int
---         | Rest Exp Int
---         | Eat Exp Int
-         | Damage Exp Int
+         | Damage Exp Exp
          | HasStamina Exp
---         | If Exp Exp Exp
-         | Ref Exp
-
+         | IsAlive Exp
+         | Ref String
    deriving(Eq,Show)
-
-
 
 data Stmt = Bind String Exp
           | If Exp Stmt Stmt
@@ -35,11 +33,9 @@ data Stmt = Bind String Exp
           | Block [Stmt]
     deriving(Eq,Show)
 
---prog :: Prog -> HState -> Result
---prog [] _ = (OK HState)
---prog (x:xs) (y) = prog xs (sem Dec y)
-
 data Type = TInt | TBool | HState
+    deriving(Eq,Show)
+
 
 type Decl = (Var, Type)
 
@@ -49,10 +45,129 @@ ex1 :: Prog
 ex1 = P [("restTime", TInt), ("startState", HState)]
         (Block [
            Bind "restTime" (Lit 5),
-           Bind "startState" (0,100,100),
-           While (HasStamina (Ref "startState"))
+           Bind "startState" (Dec (0,100,100)),
+           While (IsAlive (Ref "startState"))
            (Block [
                Bind "startState" (Damage (Ref "startState") (Lit 10)),
                Bind "startState" (Damage (Ref "startState") (Lit 10))
            ])
         ])
+
+ex2 :: Prog
+ex2 = P [("startState", HState)]
+        (Block [
+          Bind "startState" (Dec (0, 100, 100)),
+          While (IsAlive (Ref "startState"))
+          (Block [
+              Bind "startState" (Damage (Ref "startState") (Lit 10))
+          ])
+
+        ])
+
+type Env a = Map Var a
+
+typeExpr :: Exp -> Env Type -> Maybe Type
+typeExpr (Dec hstate)     m  = Just HState
+typeExpr (Lit i)          m  = Just TInt
+typeExpr (Damage e1 e2)   m  =  case (typeExpr e1 m, typeExpr e2 m) of
+                                   (Just HState, Just TInt) -> Just HState
+                                   _ -> Nothing
+typeExpr (HasStamina e)   m  = case (typeExpr e m) of
+                                   (Just HState) -> Just TBool
+                                   _ -> Nothing
+typeExpr (IsAlive e)   m  = case (typeExpr e m) of
+                                  (Just HState) -> Just TBool
+                                  _ -> Nothing
+typeExpr (Ref v)          m  = lookup v m
+
+
+typeStmt :: Stmt -> Env Type -> Bool
+typeStmt (Bind v e)   m = case (lookup v m, typeExpr e m) of
+                            (Just tv, Just te) -> tv == te
+                            _ -> False
+typeStmt (If c st se) m = case typeExpr c m of
+                            Just TBool -> typeStmt st m && typeStmt se m
+                            _ -> False
+typeStmt (While c sb) m = case typeExpr c m of
+                            Just TBool -> typeStmt sb m
+                            _ -> False
+typeStmt (Block ss)   m = all (\s -> typeStmt s m) ss
+
+
+typeProg :: Prog -> Bool
+typeProg (P ds s) = typeStmt s (fromList ds)
+
+-- SEMANTICSSSSSSS
+
+data Val = B Bool | I Int | HS HState
+  deriving(Eq,Show)
+
+evalExpr :: Exp -> Env Val -> Val
+evalExpr (Dec hs)       _ = HS hs
+evalExpr (Lit i)        _ = I i
+evalExpr (Damage e damageDone) m
+                          | (p, h, s) <- evalHS e m = HS (p, h-(evalInt damageDone m), s)
+evalExpr (HasStamina e) m
+                          | (p, h, s) <- evalHS e m = B (s > 0)
+                          | _ <- evalHS e m = B False
+evalExpr (IsAlive e)    m
+                          | (p, h, s) <- evalHS e m = B (h > 0)
+                          | _ <- evalHS e m = B False
+
+evalExpr (Ref x)   m = case lookup x m of
+                         Just v  -> v
+                         Nothing -> error "internal error: undefined variable"
+
+evalHS :: Exp -> Env Val -> HState
+evalHS e m = case (evalExpr e m) of
+                HS s -> s
+                _  -> error "internal error: expected HS, got bool or in"
+
+
+evalInt :: Exp -> Env Val -> Int
+evalInt e m = case evalExpr e m of
+                I i  -> i
+                _ -> error "internal error: expected int, got bool or hstate"
+
+
+-- | Helper function to evaluate an expression to a Boolean.
+evalBool :: Exp -> Env Val -> Bool
+evalBool e m = case evalExpr e m of
+                 B b -> b
+                 _  -> error "internal error: expected Bool, got int or hstate"
+
+-- | Semantics of statements. Statements update the bindings in the
+--   environment, so the semantic domain is 'Env Val -> Env Val'. The
+--   bind case is the case that actually changes the environment. The
+--   other cases should look similar to other examples you've seen.
+evalStmt :: Stmt -> Env Val -> Env Val
+evalStmt (Bind x e)   m = insert x (evalExpr e m) m
+evalStmt (If c st se) m = if evalBool c m
+                        then evalStmt st m
+                        else evalStmt se m
+evalStmt (While c sb) m = if evalBool c m
+                        then evalStmt (While c sb) (evalStmt sb m)
+                        else m
+evalStmt (Block ss)   m = evalStmts ss m
+
+-- | Helper function to evaluate a list of statements. We could also
+--   have used 'foldl' here.
+evalStmts :: [Stmt] -> Env Val -> Env Val
+evalStmts []     m = m
+evalStmts (s:ss) m = evalStmts ss (evalStmt s m)
+
+-- | Semantics of programs. This runs a program with an initial
+--   environment where all integer variables are initialized to 0, and
+--   all Boolean variables are initialized to false.
+evalProg :: Prog -> Env Val
+evalProg (P ds s) = evalStmt s m
+ where
+  m = fromList (map (\(x,t) -> (x, init t)) ds)
+  init TInt  = I 0
+  init TBool = B False
+  init HState = HS (0,0,0)
+
+-- | Type check and then run a program.
+runProg :: Prog -> Maybe (Env Val)
+runProg p = if typeProg p then Just (evalProg p)
+                        else Nothing
