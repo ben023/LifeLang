@@ -83,19 +83,28 @@ data Val = I Int | B Bool | HS HState
 evalExpr :: Expr -> Env Val -> Val
 evalExpr (Lit i) _ = I i
 evalExpr (State s) _ = HS s
-evalExpr (IsAlive x) m = B (evalHState x m)
-evalExpr (Walk x) m = HS (evalHState x m)
-evalExpr (Rest x y) m = HS (evalHState )
+-- evalExpr (IsAlive x) m = case (evalHState x m) of
+--                         (x, y, z) -> B (y > 0)
+-- evalExpr (IsAlive x) m = case (evalHState x m) of
+--                         (x, y, z) -> B (y > 0)
+
+evalExpr (IsAlive x) m |
+                        (p, h, s) <- (evalHState x m) = B (h < 0)
+
+-- evalExpr (Walk x) m = HS (evalHState x m)
+-- evalExpr (Rest x y) m = HS (evalHState )
 
 evalInt :: Expr -> Env Val -> Int
 evalInt e m = case evalExpr e m of
-                Left i  -> i
-                Right _ -> error "internal error: expected Int got Bool"
+                I i  -> i
+                _ -> error "internal error: expected Int"
 
-evalBool :: Expr -> Env Val -> Bool
-evalBool e m = case evalExpr e m of
-                 Right b -> b
-                 Left _  -> error "internal error: expected Bool got Int"
+-- evalBool :: Expr -> Env Val -> Bool
+-- evalBool e m = case evalExpr e m of
+--                  B b -> b
+--                 _  -> error "internal error: expected Bool"
 
 evalHState :: Expr -> Env Val -> HState
-evalHState ->
+evalHState e m = case evalExpr e m of
+                 HS s -> s
+                 _ -> error "internal error: expected HState"
