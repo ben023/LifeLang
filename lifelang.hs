@@ -46,6 +46,13 @@ exTemplate = P [("restTime", TInt), ("startingState", THState)]
                 ])
             ])
 
+ex1 :: Prog
+ex1 = P[("startingState", THState), ("result", TBool)]
+        (Block [
+            Bind "startingState" (State (0, 100, 100)),
+            Bind "result" (IsAlive(Ref "startingState"))
+        ])
+
 type Env a = Map Var a
 
 typeExpr :: Expr -> Env Type -> Maybe Type
@@ -99,12 +106,44 @@ evalInt e m = case evalExpr e m of
                 I i  -> i
                 _ -> error "internal error: expected Int"
 
--- evalBool :: Expr -> Env Val -> Bool
--- evalBool e m = case evalExpr e m of
---                  B b -> b
---                 _  -> error "internal error: expected Bool"
+evalBool :: Expr -> Env Val -> Bool
+evalBool e m = case evalExpr e m of
+                B b -> b
+                _  -> error "internal error: expected Bool"
 
 evalHState :: Expr -> Env Val -> HState
 evalHState e m = case evalExpr e m of
                  HS s -> s
                  _ -> error "internal error: expected HState"
+
+
+
+-- 
+evalStmt :: Stmt -> Env Val -> Env Val
+evalStmt (Bind x e)   m = insert x (evalExpr e m) m
+evalStmt (While c sb) m = if evalBool c m
+                          then evalStmt (While c sb) (evalStmt sb m)
+                          else m
+evalStmt (Block ss)   m = evalStmts ss m
+
+-- | Helper function to evaluate a list of statements. We could also
+--   have used 'foldl' here.
+evalStmts :: [Stmt] -> Env Val -> Env Val
+evalStmts []     m = m
+evalStmts (s:ss) m = evalStmts ss (evalStmt s m)
+
+-- | Semantics of programs. This runs a program with an initial
+--   environment where all integer variables are initialized to 0, and
+--   all Boolean variables are initialized to false.
+evalProg :: Prog -> Env Val
+evalProg (P ds s) = evalStmt s m
+  where
+    m = fromList (map (\(x,t) -> (x, init t)) ds)
+    init TInt  = I 0
+    init TBool = B False
+    init THState = HS (0, 0, 0)
+
+-- | Type check and then run a program.
+runProg :: Prog -> Maybe (Env Val)
+runProg p = if typeProg p then Just (evalProg p)
+                          else Nothing
