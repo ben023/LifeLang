@@ -112,7 +112,7 @@ typeStmt (Block ss)   m = all (\s -> typeStmt s m) ss
 typeProg :: Prog -> Bool
 typeProg (P ds s) = typeStmt s (fromList ds)
 
--- SEMANTICSSSSSSS
+-- SEMANTICS
 
 data Val = B Bool | I Int | HS HState
   deriving(Eq,Show)
@@ -192,3 +192,15 @@ evalProg (P ds s) = evalStmt s m
 runProg :: Prog -> Maybe (Env Val)
 runProg p = if typeProg p then Just (evalProg p)
                         else Nothing
+
+-- FUNCTIONS
+
+--data Stmt = Bind String Exp
+--          | If Exp Stmt Stmt
+--          | While Exp Stmt
+--          | Block [Stmt]
+--    deriving(Eq,Show)
+
+sleep :: Int -> Stmt
+sleep 0 = (Bind "startState" (Rest (Ref "startState") (Lit 1)))
+sleep n = Block [(Bind "startState" (Rest (Ref "startState") (Lit 1))), sleep (subtract 1 n)]
