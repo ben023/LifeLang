@@ -28,17 +28,26 @@ data Exp = Dec HState
          | HasStamina Exp
          | IsAlive Exp
          | Ref String
+         | Fun Var Exp
+         | App Exp Exp
+         | Let Var Exp Exp
    deriving(Eq,Show)
 
 data Stmt = Bind String Exp
           | If Exp Stmt Stmt
           | While Exp Stmt
           | Block [Stmt]
+        --  | Let Var Exp Exp
     deriving(Eq,Show)
 
 data Type = TInt | TBool | HState
     deriving(Eq,Show)
 
+exFunct :: Exp
+exFunct = Let "sleep" (Fun "number_of_rests" (Rest (Ref "startState") (Ref "number_of_rests")))
+                  (App (Ref "sleep") (Lit 5))
+
+-- Bind "startState" (Rest (Ref "startState") (Lit 1))
 
 type Decl = (Var, Type)
 
@@ -116,7 +125,7 @@ typeProg (P ds s) = typeStmt s (fromList ds)
 
 -- SEMANTICS
 
-data Val = B Bool | I Int | HS HState
+data Val = B Bool | I Int | HS HState | F Var Exp
   deriving(Eq,Show)
 
 evalExpr :: Exp -> Env Val -> Val
@@ -140,11 +149,26 @@ evalExpr (IsAlive e)    m
 evalExpr (Ref x)   m = case lookup x m of
                          Just v  -> v
                          Nothing -> error "internal error: undefined variable"
+evalExpr (Fun v e)     m = F v e
+evalExpr (Let x y z)   m = case evalFun y m of
+                           (v,e) -> evalExpr z (insert v (evalExpr e m) m)
+-- evalExpr (App l r)     m = case
+
+
+
+-- insert x (evalExpr e m) m
+
+evalFun :: Exp -> Env Val -> (Var, Exp)
+evalFun e m = case (evalExpr e m) of
+                F v e -> (v, e)
+                _  -> error "internal error: expected F, got bool or int"
+
+
 
 evalHS :: Exp -> Env Val -> HState
 evalHS e m = case (evalExpr e m) of
                 HS s -> s
-                _  -> error "internal error: expected HS, got bool or in"
+                _  -> error "internal error: expected HS, got bool or int"
 
 
 evalInt :: Exp -> Env Val -> Int
@@ -172,7 +196,19 @@ evalStmt (While c sb) m = if evalBool c m
                         then evalStmt (While c sb) (evalStmt sb m)
                         else m
 evalStmt (Block ss)   m = evalStmts ss m
+-- evalStmt (Let x b e)  m | HS hs <- evalExpr b m = (insert x (HS hs) m)
 
+-- exFunct :: Stmt
+-- exFunct = Let
+-- "sleep"
+-- (Fun "number_of_rests" (Rest (Ref "startState") (Ref "number_of_rests")))
+-- (App (Ref "sleep") (Lit 5))
+
+-- type Env a = Map Var a
+
+-- = case evalStmt b m of
+  --                      Map v -> evalStmt e (insert x (evalExpr v m) m)
+-- | (p, h, s) <- evalHS e m = HS (p+(evalInt distanceGained m), h, s-(evalInt distanceGained m))
 -- | Helper function to evaluate a list of statements. We could also
 --   have used 'foldl' here.
 evalStmts :: [Stmt] -> Env Val -> Env Val
@@ -198,6 +234,23 @@ runProg p = if typeProg p then Just (evalProg p)
 
 -- FUNCTIONS
 
+ex4 :: Prog
+ex4 = P [("restTime", TInt), ("startState", HState)]
+        (Block [
+           Bind "restTime" (Lit 5),
+           Bind "startState" (Dec (0,100,100)),
+           While (IsAlive (Ref "startState"))
+           (Block (sleep 3))
+
+        ])
+
+insertFunction :: Int -> Prog
+insertFunction s = P [("restTime", TInt), ("startState", HState)]
+        (Block [
+           Bind "restTime" (Lit 5),
+           Bind "startState" (Dec (0,100,100)),
+           While (IsAlive (Ref "startState")) (Block (sleep s))
+        ])
 
 insertEx1 :: [Stmt]
 insertEx1 = sleep 5
