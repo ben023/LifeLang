@@ -1,14 +1,14 @@
 module Lifelang where
 
-import Data.Map (Map,fromList,lookup,insert)
-import Data.Maybe
-import Prelude hiding (lookup)
+import           Data.Map   (Map, fromList, insert, lookup)
+import           Data.Maybe
+import           Prelude    hiding (lookup)
 --import           Data.List
 
 type Pos = Int
 type Health = Int
 type Stamina = Int
-
+type Func = String
 type HState = (Pos, Health, Stamina)
 
 --data Result = OK HState
@@ -18,7 +18,6 @@ type HState = (Pos, Health, Stamina)
 --        deriving(Eq, Show)
 
 type Var = String
-type OwnExpList = String
 
 data Exp = Dec HState
          | Lit Int
@@ -28,23 +27,24 @@ data Exp = Dec HState
          | Walk Exp Exp
          | HasStamina Exp
          | IsAlive Exp
-         | Ref String
-         | Build OwnExpList [Var] FuncProg
+         | Ref Var
    deriving(Eq,Show)
 
 data Stmt = Bind String Exp
           | If Exp Stmt Stmt
           | While Exp Stmt
           | Block [Stmt]
+          | Define Func [Var] [Exp]
+          | Call Func [Exp]
     deriving(Eq,Show)
 
+hibernate = Define "hibernate" ["days"]
+  []
 data Type = TInt | TBool | HState
     deriving(Eq,Show)
 
 
 type Decl = (Var, Type)
-
-type FuncProg = [Exp]
 
 data Prog = P [Decl] Stmt
 
@@ -60,6 +60,7 @@ ex1 = P [("restTime", TInt), ("startState", HState)]
            ])
         ])
 
+
 ex2 :: Prog
 ex2 = P [("startState", HState)]
         (Block [
@@ -70,53 +71,56 @@ ex2 = P [("startState", HState)]
               Bind "startState" (Eat (Ref "startState") (Lit 7)),
               Bind "startState" (Walk (Ref "startState") (Lit 5)),
               Bind "startState" (Rest (Ref "startState") (Lit 1))
+
           ])
 
         ])
 
 type Env a = Map Var a
 
+--Implement a static type system by checking all inputs before running
+
 typeExpr :: Exp -> Env Type -> Maybe Type
 typeExpr (Dec hstate)     m  = Just HState
 typeExpr (Lit i)          m  = Just TInt
 typeExpr (Damage e1 e2)   m  =  case (typeExpr e1 m, typeExpr e2 m) of
                                    (Just HState, Just TInt) -> Just HState
-                                   _ -> Nothing
+                                   _                        -> Nothing
 typeExpr (Eat e1 e2)   m  =  case (typeExpr e1 m, typeExpr e2 m) of
                                   (Just HState, Just TInt) -> Just HState
-                                  _ -> Nothing
+                                  _                        -> Nothing
 typeExpr (Rest e1 e2)   m  =  case (typeExpr e1 m, typeExpr e2 m) of
                                   (Just HState, Just TInt) -> Just HState
-                                  _ -> Nothing
+                                  _                        -> Nothing
 typeExpr (Walk e1 e2)   m  =  case (typeExpr e1 m, typeExpr e2 m) of
                                   (Just HState, Just TInt) -> Just HState
-                                  _ -> Nothing
+                                  _                        -> Nothing
 typeExpr (HasStamina e)   m  = case (typeExpr e m) of
                                    (Just HState) -> Just TBool
-                                   _ -> Nothing
+                                   _             -> Nothing
 typeExpr (IsAlive e)   m  = case (typeExpr e m) of
                                   (Just HState) -> Just TBool
-                                  _ -> Nothing
+                                  _             -> Nothing
 typeExpr (Ref v)          m  = lookup v m
 
 
 typeStmt :: Stmt -> Env Type -> Bool
 typeStmt (Bind v e)   m = case (lookup v m, typeExpr e m) of
                             (Just tv, Just te) -> tv == te
-                            _ -> False
+                            _                  -> False
 typeStmt (If c st se) m = case typeExpr c m of
                             Just TBool -> typeStmt st m && typeStmt se m
-                            _ -> False
+                            _          -> False
 typeStmt (While c sb) m = case typeExpr c m of
                             Just TBool -> typeStmt sb m
-                            _ -> False
+                            _          -> False
 typeStmt (Block ss)   m = all (\s -> typeStmt s m) ss
 
 
 typeProg :: Prog -> Bool
 typeProg (P ds s) = typeStmt s (fromList ds)
 
--- SEMANTICSSSSSSS
+-- SEMANTICS
 
 data Val = B Bool | I Int | HS HState
   deriving(Eq,Show)
@@ -146,7 +150,7 @@ evalExpr (Ref x)   m = case lookup x m of
 evalHS :: Exp -> Env Val -> HState
 evalHS e m = case (evalExpr e m) of
                 HS s -> s
-                _  -> error "internal error: expected HS, got bool or in"
+                _    -> error "internal error: expected HS, got bool or in"
 
 
 evalInt :: Exp -> Env Val -> Int
@@ -188,17 +192,56 @@ evalProg :: Prog -> Env Val
 evalProg (P ds s) = evalStmt s m
  where
   m = fromList (map (\(x,t) -> (x, init t)) ds)
-  init TInt  = I 0
-  init TBool = B False
+  init TInt   = I 0
+  init TBool  = B False
   init HState = HS (0,0,0)
-
-buildmac :: FuncProg -> [OwnExpList]
-buildmac = concatMap builder
-   where
-       builder (Build m _ st) = m : buildmac st
-       builder _              = []
 
 -- | Type check and then run a program.
 runProg :: Prog -> Maybe (Env Val)
 runProg p = if typeProg p then Just (evalProg p)
                         else Nothing
+
+
+prettyExp :: Exp -> String
+prettyExp (Ref v) = v
+prettyExp (Lit n) = show n
+prettyExp (Dec hst) = show hst
+prettyExp (Damage l r) = "Player took damage :" ++ prettyExp l ++ "and has" ++ prettyExp r ++ "health remaining"
+prettyExp (Eat l r) = "Player ate and healed for" ++ prettyExp l ++ "Now has health :" ++ prettyExp r
+prettyExp (Rest l r) = "Player rested and healed for" ++ prettyExp l ++ "Now has health :" ++ prettyExp r
+prettyExp (Walk l r) = "Player walked from starting position :" ++ prettyExp l ++ "and is now at position : " ++ prettyExp r
+prettyExp (HasStamina h) = "Player has stamina : " ++ prettyExp h
+prettyExp (IsAlive a) = "Player's live state is : " ++ prettyExp a
+prettyExp _      = []
+
+
+exprettyExp :: String
+exprettyExp =  prettyExp (Lit 3)
+
+{- There needs to be an example implemented for this will implement soon. -}
+
+{- This might not be needed, as we have prettyExp which prints out the state of the player.
+prettyStmt :: Stmt -> String
+prettyStmt (Bind str e) = "Bound string" ++ prettyExp str -}
+
+{- prettyDec :: [Decl] -> String
+prettyDec []      = []
+prettyDec ((v,TInt):p) = "Variable " ++ v ++ " declared as an Int" ++ prettyDec p ++ "\n"
+prettyDec ((v, TBool): p) = "Variable " ++ v ++ "declared as a TBool" ++ prettyDec p ++ "\n"
+prettyDec ((v, HState): p) = "Variable " ++ v ++ "declared as an HState" ++ prettyDec p "\n" -}
+
+
+{- runPretty :: Prog -> String
+runPretty p = if typeProg p then prettyProg p
+                    else = "Type error: Could not verify program types" -}
+
+
+-- FUNCTIONS
+
+{-
+insertEx1 :: [Stmt]
+insertEx1 = sleep 5
+
+sleep :: Int -> [Stmt]
+sleep 0 = [Bind "startState" (Rest (Ref "startState") (Lit 1))]
+sleep n = [(Bind "startState" (Rest (Ref "startState") (Lit 1)))] ++ sleep (subtract 1 n) -}
