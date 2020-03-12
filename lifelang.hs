@@ -35,7 +35,9 @@ data Stmt = Bind String Exp
           | While Exp Stmt
           | Block [Stmt]
           | Define Func [Var] [Exp]
+          | Write Func [Var] Exp
           | Call Func [Exp]
+          | Tell Func Exp String
     deriving(Eq,Show)
 
 hibernate = Define "hibernate" ["days"]
@@ -43,6 +45,7 @@ hibernate = Define "hibernate" ["days"]
 data Type = TInt | TBool | HState
     deriving(Eq,Show)
 
+printstory = Write "printstory" ["story"]
 
 type Decl = (Var, Type)
 
@@ -57,6 +60,7 @@ ex1 = P [("restTime", TInt), ("startState", HState)]
            (Block [
                Bind "startState" (Damage (Ref "startState") (Lit 10)),
                Bind "startState" (Damage (Ref "startState") (Lit 10))
+  --             Tell "printstory" prettyExp (Dec (0, 100, 100))
            ])
         ])
 
@@ -205,7 +209,7 @@ runProg p = if typeProg p then Just (evalProg p)
 prettyExp :: Exp -> String
 prettyExp (Ref v) = v
 prettyExp (Lit n) = show n
-prettyExp (Dec hst) = " Player's stats initialized to : " ++ show hst
+prettyExp (Dec hst) = " Player's stats initialized to : " ++ show hst ++ " (Position, health, stamina) "
 prettyExp (Damage l r) = " Player took damage :" ++ prettyExp l ++ " and has " ++ prettyExp r ++ " health remaining "
 prettyExp (Eat l r) = " Player ate and healed for " ++ prettyExp l ++ " and now has health : " ++ prettyExp r
 prettyExp (Rest l r) = " Player rested and healed for " ++ prettyExp l ++ " and now has health : " ++ prettyExp r
@@ -239,6 +243,9 @@ exprettyStory :: String
 exprettyStory = prettyExp (Dec (0, 100, 100)) ++ prettyExp (Damage(Lit 10) (Lit 90)) ++ "\n" ++
                 prettyExp (Rest (Lit 10) (Lit 100)) ++ prettyExp (Walk (Lit 0) (Lit 1)) ++ "\n" ++
                 prettyExp (HasStamina(Lit 99)) ++ prettyExp (Damage (Lit 20) (Lit 80)) ++ "\n"
+
+
+
 
 {- There needs to be an example implemented for this will implement soon. -}
 
