@@ -205,18 +205,40 @@ runProg p = if typeProg p then Just (evalProg p)
 prettyExp :: Exp -> String
 prettyExp (Ref v) = v
 prettyExp (Lit n) = show n
-prettyExp (Dec hst) = show hst
-prettyExp (Damage l r) = "Player took damage :" ++ prettyExp l ++ "and has" ++ prettyExp r ++ "health remaining"
-prettyExp (Eat l r) = "Player ate and healed for" ++ prettyExp l ++ "Now has health :" ++ prettyExp r
-prettyExp (Rest l r) = "Player rested and healed for" ++ prettyExp l ++ "Now has health :" ++ prettyExp r
-prettyExp (Walk l r) = "Player walked from starting position :" ++ prettyExp l ++ "and is now at position : " ++ prettyExp r
-prettyExp (HasStamina h) = "Player has stamina : " ++ prettyExp h
-prettyExp (IsAlive a) = "Player's live state is : " ++ prettyExp a
+prettyExp (Dec hst) = " Player's stats initialized to : " ++ show hst
+prettyExp (Damage l r) = " Player took damage :" ++ prettyExp l ++ " and has " ++ prettyExp r ++ " health remaining "
+prettyExp (Eat l r) = " Player ate and healed for " ++ prettyExp l ++ " and now has health : " ++ prettyExp r
+prettyExp (Rest l r) = " Player rested and healed for " ++ prettyExp l ++ " and now has health : " ++ prettyExp r
+prettyExp (Walk l r) = " Player walked from starting position : " ++ prettyExp l ++ " and is now at position : " ++ prettyExp r
+prettyExp (HasStamina h) = " Player has stamina : " ++ prettyExp h
+prettyExp (IsAlive a) = " Player's live state is : " ++ prettyExp a
 prettyExp _      = []
 
+exprettyDec :: String
+exprettyDec = prettyExp (Dec (0, 100, 100))
 
-exprettyExp :: String
-exprettyExp =  prettyExp (Lit 3)
+exprettyDamage :: String
+exprettyDamage  =  prettyExp (Damage (Lit 1)  (Lit 2))
+
+exprettyEat :: String
+exprettyEat = prettyExp (Eat (Lit 10) (Lit 60))
+
+exprettyRest :: String
+exprettyRest = prettyExp (Rest (Lit 10) (Lit 70))
+
+exprettyWalk :: String
+exprettyWalk = prettyExp (Walk (Lit 0) (Lit 1))
+
+exprettyStam :: String
+exprettyStam = prettyExp (HasStamina (Lit 100))
+
+exprettyAlive :: String
+exprettyAlive = prettyExp (IsAlive (Lit 1))
+
+exprettyStory :: String
+exprettyStory = prettyExp (Dec (0, 100, 100)) ++ prettyExp (Damage(Lit 10) (Lit 90)) ++ "\n" ++
+                prettyExp (Rest (Lit 10) (Lit 100)) ++ prettyExp (Walk (Lit 0) (Lit 1)) ++ "\n" ++
+                prettyExp (HasStamina(Lit 99)) ++ prettyExp (Damage (Lit 20) (Lit 80)) ++ "\n"
 
 {- There needs to be an example implemented for this will implement soon. -}
 
