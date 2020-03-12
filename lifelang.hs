@@ -60,6 +60,7 @@ ex1 = P [("restTime", TInt), ("startState", HState)]
            ])
         ])
 
+
 ex2 :: Prog
 ex2 = P [("startState", HState)]
         (Block [
@@ -70,6 +71,7 @@ ex2 = P [("startState", HState)]
               Bind "startState" (Eat (Ref "startState") (Lit 7)),
               Bind "startState" (Walk (Ref "startState") (Lit 5)),
               Bind "startState" (Rest (Ref "startState") (Lit 1))
+
           ])
 
         ])
@@ -118,7 +120,7 @@ typeStmt (Block ss)   m = all (\s -> typeStmt s m) ss
 typeProg :: Prog -> Bool
 typeProg (P ds s) = typeStmt s (fromList ds)
 
--- SEMANTICSSSSSSS
+-- SEMANTICS
 
 data Val = B Bool | I Int | HS HState
   deriving(Eq,Show)
@@ -198,6 +200,7 @@ evalProg (P ds s) = evalStmt s m
 runProg :: Prog -> Maybe (Env Val)
 runProg p = if typeProg p then Just (evalProg p)
                         else Nothing
+
 prettyExp :: Exp -> String
 
 
@@ -216,3 +219,14 @@ prettyProg (P d s) =
 runPretty :: Prog -> String
 runPretty p = if typeProg p then prettyProg p
                     else = "Type error: Could not verify program types"
+
+
+-- FUNCTIONS
+
+
+insertEx1 :: [Stmt]
+insertEx1 = sleep 5
+
+sleep :: Int -> [Stmt]
+sleep 0 = [Bind "startState" (Rest (Ref "startState") (Lit 1))]
+sleep n = [(Bind "startState" (Rest (Ref "startState") (Lit 1)))] ++ sleep (subtract 1 n)
