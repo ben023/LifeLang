@@ -8,6 +8,7 @@ import Prelude hiding (lookup)
 type Pos = Int
 type Health = Int
 type Stamina = Int
+type Func = String
 
 type HState = (Pos, Health, Stamina)
 
@@ -37,8 +38,15 @@ data Stmt = Bind String Exp
           | If Exp Stmt Stmt
           | While Exp Stmt
           | Block [Stmt]
+          | Define Func [Var] [Exp]
+          | Write Func [Var] Exp
+          | Call Func [Exp]
+          | Tell Func Exp String
         --  | Let Var Exp Exp
     deriving(Eq,Show)
+
+hibernate = Define "hibernate" ["days"]
+    []
 
 data Type = TInt | TBool | HState
     deriving(Eq,Show)
@@ -48,6 +56,7 @@ exFunct = Let "sleep" (Fun "number_of_rests" (Rest (Ref "startState") (Ref "numb
                   (App (Ref "sleep") (Lit 5))
 
 -- Bind "startState" (Rest (Ref "startState") (Lit 1))
+printstory = Write "printstory" ["story"]
 
 type Decl = (Var, Type)
 
@@ -230,6 +239,67 @@ evalProg (P ds s) = evalStmt s m
 runProg :: Prog -> Maybe (Env Val)
 runProg p = if typeProg p then Just (evalProg p)
                         else Nothing
+
+
+prettyExp :: Exp -> String
+prettyExp (Ref v) = v
+prettyExp (Lit n) = show n
+prettyExp (Dec hst) = " Player's stats initialized to : " ++ show hst ++ " (Position, health, stamina) "
+prettyExp (Damage l r) = " Player took damage :" ++ prettyExp l ++ " and has " ++ prettyExp r ++ " health remaining "
+prettyExp (Eat l r) = " Player ate and healed for " ++ prettyExp l ++ " and now has health : " ++ prettyExp r
+prettyExp (Rest l r) = " Player rested and healed for " ++ prettyExp l ++ " and now has health : " ++ prettyExp r
+prettyExp (Walk l r) = " Player walked from starting position : " ++ prettyExp l ++ " and is now at position : " ++ prettyExp r
+prettyExp (HasStamina h) = " Player has stamina : " ++ prettyExp h
+prettyExp (IsAlive a) = " Player's live state is : " ++ prettyExp a
+prettyExp _      = []
+
+exprettyDec :: String
+exprettyDec = prettyExp (Dec (0, 100, 100))
+
+exprettyDamage :: String
+exprettyDamage  =  prettyExp (Damage (Lit 1)  (Lit 2))
+
+exprettyEat :: String
+exprettyEat = prettyExp (Eat (Lit 10) (Lit 60))
+
+exprettyRest :: String
+exprettyRest = prettyExp (Rest (Lit 10) (Lit 70))
+
+exprettyWalk :: String
+exprettyWalk = prettyExp (Walk (Lit 0) (Lit 1))
+
+exprettyStam :: String
+exprettyStam = prettyExp (HasStamina (Lit 100))
+
+exprettyAlive :: String
+exprettyAlive = prettyExp (IsAlive (Lit 1))
+
+exprettyStory :: String
+exprettyStory = prettyExp (Dec (0, 100, 100)) ++ prettyExp (Damage(Lit 10) (Lit 90)) ++ "\n" ++
+                prettyExp (Rest (Lit 10) (Lit 100)) ++ prettyExp (Walk (Lit 0) (Lit 1)) ++ "\n" ++
+                prettyExp (HasStamina(Lit 99)) ++ prettyExp (Damage (Lit 20) (Lit 80)) ++ "\n"
+
+
+
+
+{- There needs to be an example implemented for this will implement soon. -}
+
+{- This might not be needed, as we have prettyExp which prints out the state of the player.
+prettyStmt :: Stmt -> String
+prettyStmt (Bind str e) = "Bound string" ++ prettyExp str -}
+
+{- prettyDec :: [Decl] -> String
+prettyDec []      = []
+prettyDec ((v,TInt):p) = "Variable " ++ v ++ " declared as an Int" ++ prettyDec p ++ "\n"
+prettyDec ((v, TBool): p) = "Variable " ++ v ++ "declared as a TBool" ++ prettyDec p ++ "\n"
+prettyDec ((v, HState): p) = "Variable " ++ v ++ "declared as an HState" ++ prettyDec p "\n" -}
+
+
+{- runPretty :: Prog -> String
+runPretty p = if typeProg p then prettyProg p
+                    else = "Type error: Could not verify program types" -}
+
+
 
 
 -- FUNCTIONS
