@@ -1,14 +1,14 @@
 module Lifelang where
 
-import Data.Map (Map,fromList,lookup,insert)
-import Data.Maybe
-import Prelude hiding (lookup)
+import           Data.Map   (Map, fromList, insert, lookup)
+import           Data.Maybe
+import           Prelude    hiding (lookup)
 --import           Data.List
 
 type Pos = Int
 type Health = Int
 type Stamina = Int
-
+type Func = String
 type HState = (Pos, Health, Stamina)
 
 --data Result = OK HState
@@ -34,8 +34,12 @@ data Stmt = Bind String Exp
           | If Exp Stmt Stmt
           | While Exp Stmt
           | Block [Stmt]
+          | Define Func [Var] [Exp]
+          | Call Func [Exp]
     deriving(Eq,Show)
 
+hibernate = Define "hibernate" ["days"]
+  []
 data Type = TInt | TBool | HState
     deriving(Eq,Show)
 
@@ -72,40 +76,42 @@ ex2 = P [("startState", HState)]
 
 type Env a = Map Var a
 
+--Implement a static type system by checking all inputs before running
+
 typeExpr :: Exp -> Env Type -> Maybe Type
 typeExpr (Dec hstate)     m  = Just HState
 typeExpr (Lit i)          m  = Just TInt
 typeExpr (Damage e1 e2)   m  =  case (typeExpr e1 m, typeExpr e2 m) of
                                    (Just HState, Just TInt) -> Just HState
-                                   _ -> Nothing
+                                   _                        -> Nothing
 typeExpr (Eat e1 e2)   m  =  case (typeExpr e1 m, typeExpr e2 m) of
                                   (Just HState, Just TInt) -> Just HState
-                                  _ -> Nothing
+                                  _                        -> Nothing
 typeExpr (Rest e1 e2)   m  =  case (typeExpr e1 m, typeExpr e2 m) of
                                   (Just HState, Just TInt) -> Just HState
-                                  _ -> Nothing
+                                  _                        -> Nothing
 typeExpr (Walk e1 e2)   m  =  case (typeExpr e1 m, typeExpr e2 m) of
                                   (Just HState, Just TInt) -> Just HState
-                                  _ -> Nothing
+                                  _                        -> Nothing
 typeExpr (HasStamina e)   m  = case (typeExpr e m) of
                                    (Just HState) -> Just TBool
-                                   _ -> Nothing
+                                   _             -> Nothing
 typeExpr (IsAlive e)   m  = case (typeExpr e m) of
                                   (Just HState) -> Just TBool
-                                  _ -> Nothing
+                                  _             -> Nothing
 typeExpr (Ref v)          m  = lookup v m
 
 
 typeStmt :: Stmt -> Env Type -> Bool
 typeStmt (Bind v e)   m = case (lookup v m, typeExpr e m) of
                             (Just tv, Just te) -> tv == te
-                            _ -> False
+                            _                  -> False
 typeStmt (If c st se) m = case typeExpr c m of
                             Just TBool -> typeStmt st m && typeStmt se m
-                            _ -> False
+                            _          -> False
 typeStmt (While c sb) m = case typeExpr c m of
                             Just TBool -> typeStmt sb m
-                            _ -> False
+                            _          -> False
 typeStmt (Block ss)   m = all (\s -> typeStmt s m) ss
 
 
@@ -142,7 +148,7 @@ evalExpr (Ref x)   m = case lookup x m of
 evalHS :: Exp -> Env Val -> HState
 evalHS e m = case (evalExpr e m) of
                 HS s -> s
-                _  -> error "internal error: expected HS, got bool or in"
+                _    -> error "internal error: expected HS, got bool or in"
 
 
 evalInt :: Exp -> Env Val -> Int
@@ -184,11 +190,29 @@ evalProg :: Prog -> Env Val
 evalProg (P ds s) = evalStmt s m
  where
   m = fromList (map (\(x,t) -> (x, init t)) ds)
-  init TInt  = I 0
-  init TBool = B False
+  init TInt   = I 0
+  init TBool  = B False
   init HState = HS (0,0,0)
 
 -- | Type check and then run a program.
 runProg :: Prog -> Maybe (Env Val)
 runProg p = if typeProg p then Just (evalProg p)
                         else Nothing
+prettyExp :: Exp -> String
+
+
+prettyStmt :: Stmt -> String
+
+
+prettyDec :: [Decl] -> String
+prettyDec []      = []
+prettyDec ((v,TInt):p) = "Variable " ++ v ++ " declared as an Int" ++ prettyDec p ++ "\n"
+prettyDec ((v, TBool): p) = "Variable " ++ v ++ "declared as a TBool" ++ prettyDec p ++ "\n"
+prettyDec ((v, HState): p) = "Variable " ++ v ++ "declared as an HState" ++ prettyDec p "\n"
+
+prettyProg :: Prog -> String
+prettyProg (P d s) =
+
+runPretty :: Prog -> String
+runPretty p = if typeProg p then prettyProg p
+                    else = "Type error: Could not verify program types"
