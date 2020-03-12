@@ -56,6 +56,7 @@ ex1 = P [("restTime", TInt), ("startState", HState)]
            ])
         ])
 
+
 ex2 :: Prog
 ex2 = P [("startState", HState)]
         (Block [
@@ -66,6 +67,7 @@ ex2 = P [("startState", HState)]
               Bind "startState" (Eat (Ref "startState") (Lit 7)),
               Bind "startState" (Walk (Ref "startState") (Lit 5)),
               Bind "startState" (Rest (Ref "startState") (Lit 1))
+
           ])
 
         ])
@@ -193,14 +195,13 @@ runProg :: Prog -> Maybe (Env Val)
 runProg p = if typeProg p then Just (evalProg p)
                         else Nothing
 
+
 -- FUNCTIONS
 
---data Stmt = Bind String Exp
---          | If Exp Stmt Stmt
---          | While Exp Stmt
---          | Block [Stmt]
---    deriving(Eq,Show)
 
-sleep :: Int -> Stmt
-sleep 0 = (Bind "startState" (Rest (Ref "startState") (Lit 1)))
-sleep n = Block [(Bind "startState" (Rest (Ref "startState") (Lit 1))), sleep (subtract 1 n)]
+insertEx1 :: [Stmt]
+insertEx1 = sleep 5
+
+sleep :: Int -> [Stmt]
+sleep 0 = [Bind "startState" (Rest (Ref "startState") (Lit 1))]
+sleep n = [(Bind "startState" (Rest (Ref "startState") (Lit 1)))] ++ sleep (subtract 1 n)
