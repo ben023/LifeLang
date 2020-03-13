@@ -14,8 +14,10 @@ To run in GHCI, first load the module Lifelang.
 Programs are run using the function runProg which takes a program and returns either the environment or nothing. The program is type checked before execution. If the program fails, we return Nothing.  
 A program is defined with the data Prog = P [Decl] Stmt. To start, define a program P with an array of declarations and a statement. 
 Declarations have the general format (Var, Type) in which Var is a string and Type is some TInt, TBool, or HState. Stmt are any of the defined statements in our language.  
+  
 To run a program, create a Prog then runProg "Your Prog"  
 To print the contents of a Prog, type prettyProg "Your Prog"  
   
-### Examples:
+### Examples:  
+
 
