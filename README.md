@@ -19,5 +19,5 @@ To run a program, create a Prog then runProg "Your Prog"
 To print the contents of a Prog, type prettyProg "Your Prog"  
   
 ### Examples:  
-
+![Good example 1](https://imgur.com/XHe5YP6.png)
 
