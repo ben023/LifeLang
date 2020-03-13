@@ -53,9 +53,14 @@ ex1 = P [("restTime", TInt), ("startState", HState)]
                Bind "startState" (Damage (Ref "startState") (Lit 10))
            ])
         ])
-
+        
+-- Returns Just (fromList [("restTime",I 0),("startState",HS (0,0,100))])
 runEx1 :: Maybe (Env Val)
 runEx1 = runProg ex1
+
+
+-- Damages and heals and exhausts stamina and rest. Will eventually lead to death
+-- The stamina can be restored from 0, but once health reaches 0 the user dies
 
 ex2 :: Prog
 ex2 = P [("startState", HState)]
@@ -67,12 +72,16 @@ ex2 = P [("startState", HState)]
               Bind "startState" (Eat (Ref "startState") (Lit 7)),
               Bind "startState" (Walk (Ref "startState") (Lit 5)),
               Bind "startState" (Rest (Ref "startState") (Lit 1))
-
           ])
-
         ])
 
+-- Returns Just (fromList [("startState",HS (129,0,1))])
+runEx2 :: Maybe (Env Val)
+runEx2 = runProg ex2
 
+
+-- Will kill the human since walking 200 units will exhaust stamina, then health
+-- Will walk forward 200 units as well
 ex3 :: Prog
 ex3 = P [("startState", HState)]
         (Block [
@@ -83,11 +92,14 @@ ex3 = P [("startState", HState)]
               Bind "startState" (Walk (Ref "startState") (Lit 50)),
               Bind "startState" (Walk (Ref "startState") (Lit 50))
           ])
-
         ])
 
+-- Returns Just (fromList [("startState",HS (200,0,0))])
+runEx3 :: Maybe (Env Val)
+runEx3 = runProg ex3
 
-
+-- Example of walking enough to damage 50 health, but not kill the user
+-- this is because the human exhausts all stamina and then walks 50 units
 ex4 :: Prog
 ex4 = P [("startState", HState)]
         (Block [
@@ -99,17 +111,30 @@ ex4 = P [("startState", HState)]
           ])
         ])
 
+-- Returns Just (fromList [("startState",HS (200,0,0))])
+runEx4 :: Maybe (Env Val)
+runEx4 = runProg ex4
+
+
+
+-- Example of Function call, human sleeps to death
 ex5 :: Prog
 ex5 = P [("restTime", TInt), ("startState", HState)]
         (Block [
            Bind "restTime" (Lit 5),
            Bind "startState" (Dec (0,100,100)),
            While (IsAlive (Ref "startState"))
-           (Block (sleep 3))
+           (insertFunction ((sleep 10) ++ [Bind "startState" (Damage (Ref "startState") (Lit 10))]))
 
         ])
 
+-- Returns Just (fromList [("restTime",I 5),("startState",HS (0,0,210))])
+runEx5 :: Maybe (Env Val)
+runEx5 = runProg ex5
 
+-- Bad Examples 
+
+-- Executing a command on a human who is already dead will not do anything
 ex6 :: Prog
 ex6 = P [("startState", HState)]
         (Block [
@@ -119,23 +144,15 @@ ex6 = P [("startState", HState)]
               Bind "startState" (Walk (Ref "startState") (Lit 50))
           ])
         ])
+-- Returns Just (fromList [("startState",HS (100,0,0))])
+-- Heath does not go negative
+runEx6 :: Maybe (Env Val)
+runEx6 = runProg ex6
 
-
-
-
+-- Referencing a variable that does not exist will generate an error and progra
+-- will not run
 ex7 :: Prog
 ex7 = P [("restTime", TInt), ("startState", HState)]
-        (Block [
-           Bind "restTime" (Lit 5),
-           Bind "startState" (Dec (0,100,100)),
-           While (IsAlive (Ref "startState"))
-           (insertFunction ((sleep 10) ++ [Bind "startState" (Damage (Ref "startState") (Lit 10))]))
-
-        ])
-
--- ex8:
-ex8 :: Prog
-ex8 = P [("restTime", TInt), ("startState", HState)]
         (Block [
            Bind "startState" (Dec (0,100,100)),
            While (IsAlive (Ref "startState"))
@@ -144,6 +161,26 @@ ex8 = P [("restTime", TInt), ("startState", HState)]
                Bind "startState" (Damage (Ref "startState") (Lit 10))
            ])
         ])
+-- Returns Nothing (type checker catches)
+runEx7 :: Maybe (Env Val)
+runEx7 = runProg ex7
+
+
+-- Assigning a state to a variable declared as Int (startState) will error
+ex8 :: Prog
+ex8 = P [("restTime", TInt), ("startState", TInt)]
+        (Block [
+           Bind "startState" (Dec (0,100,100)),
+           While (IsAlive (Ref "startState"))
+           (Block [
+               Bind "startState" (Damage (Ref "nonExistentState") (Lit 10)),
+               Bind "startState" (Damage (Ref "startState") (Lit 10))
+           ])
+        ])
+-- Returns Nothing (type checker catches)
+runEx8 :: Maybe (Env Val)
+runEx8 = runProg ex8
+
 
 -- Various examples of running the pretty print functions on Expressions
 
@@ -198,6 +235,8 @@ prettyEx6 = prettyProg ex6
 
 prettyEx7 :: String
 prettyEx7 = prettyProg ex7
+
+
 
 -- 
 
