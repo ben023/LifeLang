@@ -38,15 +38,9 @@ data Stmt = Bind String Exp
           | If Exp Stmt Stmt
           | While Exp Stmt
           | Block [Stmt]
-          | Define Func [Var] [Exp]
-          | Write Func [Var] Exp
-          | Call Func [Exp]
-          | Tell Func Exp String
         --  | Let Var Exp Exp
     deriving(Eq,Show)
 
-hibernate = Define "hibernate" ["days"]
-    []
 
 data Type = TInt | TBool | HState
     deriving(Eq,Show)
@@ -56,7 +50,6 @@ exFunct = Let "sleep" (Fun "number_of_rests" (Rest (Ref "startState") (Ref "numb
                   (App (Ref "sleep") (Lit 5))
 
 -- Bind "startState" (Rest (Ref "startState") (Lit 1))
-printstory = Write "printstory" ["story"]
 
 type Decl = (Var, Type)
 
@@ -244,14 +237,27 @@ runProg p = if typeProg p then Just (evalProg p)
 prettyExp :: Exp -> String
 prettyExp (Ref v) = v
 prettyExp (Lit n) = show n
-prettyExp (Dec hst) = " Player's stats initialized to : " ++ show hst ++ " (Position, health, stamina) "
-prettyExp (Damage l r) = " Player took damage :" ++ prettyExp l ++ " and has " ++ prettyExp r ++ " health remaining "
-prettyExp (Eat l r) = " Player ate and healed for " ++ prettyExp l ++ " and now has health : " ++ prettyExp r
-prettyExp (Rest l r) = " Player rested and healed for " ++ prettyExp l ++ " and now has health : " ++ prettyExp r
-prettyExp (Walk l r) = " Player walked from starting position : " ++ prettyExp l ++ " and is now at position : " ++ prettyExp r
-prettyExp (HasStamina h) = " Player has stamina : " ++ prettyExp h
-prettyExp (IsAlive a) = " Player's live state is : " ++ prettyExp a
+prettyExp (Dec hst) = " Player's stats initialized to : " ++ show hst ++ " (Position, health, stamina) . . ."
+-- prettyExp (Dec hst) = show hst ++ " (Position, health, stamina)) "
+prettyExp (Damage l r) = " (Player was damaged and took " ++ prettyExp r ++ " damage ) . . ."
+prettyExp (Eat l r) = " (Player ate and healed for " ++ prettyExp r ++ ") . . ."
+prettyExp (Rest l r) = " (Player rested and healed for " ++ prettyExp r ++ ") . . ."
+prettyExp (Walk l r) = " (Player walked " ++ prettyExp r ++ " steps forward) . . ."
+prettyExp (HasStamina h) = " (Player has stamina : " ++ prettyExp h ++ ") . . ."
+prettyExp (IsAlive a) = " (Player's live state is : " ++ prettyExp a ++ ") . . ."
 prettyExp _      = []
+
+prettyStmt :: Stmt -> String
+prettyStmt (Bind v e) = case e of
+                       Lit _ -> ""
+                       _     -> prettyExp e
+prettyStmt (Block []) = ""
+prettyStmt (Block (x:xs)) = prettyStmt x ++ prettyStmt (Block xs)
+prettyStmt (While _ s) = prettyStmt s
+prettyStmt _ = ""
+
+prettyProg :: Prog -> String
+prettyProg (P _ s) = prettyStmt s
 
 exprettyDec :: String
 exprettyDec = prettyExp (Dec (0, 100, 100))
@@ -321,6 +327,8 @@ insertFunction s = P [("restTime", TInt), ("startState", HState)]
            Bind "startState" (Dec (0,100,100)),
            While (IsAlive (Ref "startState")) (Block (sleep s))
         ])
+
+
 
 insertEx1 :: [Stmt]
 insertEx1 = sleep 5
