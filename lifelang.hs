@@ -41,7 +41,8 @@ data Prog = P [Decl] Stmt
 
 -- Good Examples of programs
 
--- ex1: This program initializes a start state with 100 health and  
+-- ex1: This program initializes a start state with 100 health and damanges
+-- the human by 10 units until they are dead
 ex1 :: Prog
 ex1 = P [("restTime", TInt), ("startState", HState)]
         (Block [
@@ -53,6 +54,8 @@ ex1 = P [("restTime", TInt), ("startState", HState)]
            ])
         ])
 
+runEx1 :: Maybe (Env Val)
+runEx1 = runProg ex1
 
 ex2 :: Prog
 ex2 = P [("startState", HState)]
@@ -130,7 +133,7 @@ ex7 = P [("restTime", TInt), ("startState", HState)]
 
         ])
 
--- ex8: This program initializes a start state with 100 health and  
+-- ex8:
 ex8 :: Prog
 ex8 = P [("restTime", TInt), ("startState", HState)]
         (Block [
@@ -270,6 +273,9 @@ evalExpr (HasStamina e) m
 evalExpr (IsAlive e)    m
                           | (p, h, s) <- evalHS e m = B (h > 0)
                           | _ <- evalHS e m = B False
+evalExpr (Ref x)   m = case lookup x m of
+                         Just v  -> v
+                         Nothing -> error "internal error: undefined variable"
 
 
 evalHS :: Exp -> Env Val -> HState
