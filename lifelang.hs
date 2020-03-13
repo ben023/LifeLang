@@ -1,24 +1,14 @@
 module Lifelang where
 
-<<<<<<< HEAD
 import           Data.Map   (Map, fromList, insert, lookup)
 import           Data.Maybe
 import           Prelude    hiding (lookup)
---import           Data.List
-=======
-import Data.Map (Map,fromList,lookup,insert)
-import Data.Maybe
-import Prelude hiding (lookup)
->>>>>>> c7daf514a618f5fabd760966ad557a3632bf9dd1
 
 type Pos = Int
 type Health = Int
 type Stamina = Int
 type Func = String
-<<<<<<< HEAD
-=======
 
->>>>>>> c7daf514a618f5fabd760966ad557a3632bf9dd1
 type HState = (Pos, Health, Stamina)
 
 type Var = String
@@ -42,12 +32,10 @@ data Stmt = Bind String Exp
           | Call Func [Exp]
     deriving(Eq,Show)
 
-<<<<<<< HEAD
-hibernate = Define "hibernate" ["days"]
-  []
-=======
+--
+-- hibernate = Define "hibernate" ["days"]
+--   []
 
->>>>>>> c7daf514a618f5fabd760966ad557a3632bf9dd1
 data Type = TInt | TBool | HState
     deriving(Eq,Show)
 
@@ -190,7 +178,7 @@ ex8 = P [("restTime", TInt), ("startState", TInt)]
            Bind "startState" (Dec (0,100,100)),
            While (IsAlive (Ref "startState"))
            (Block [
-               Bind "startState" (Damage (Ref "nonExistentState") (Lit 10)),
+               Bind "startState" (Damage (Ref "startState") (Lit 10)),
                Bind "startState" (Damage (Ref "startState") (Lit 10))
            ])
         ])
@@ -339,7 +327,7 @@ evalExpr (Ref x)   m = case lookup x m of
 evalHS :: Exp -> Env Val -> HState
 evalHS e m = case (evalExpr e m) of
                 HS s -> s
-                _  -> error "internal error: expected HS, got bool or int"
+                _    -> error "internal error: expected HS, got bool or int"
 
 
 evalInt :: Exp -> Env Val -> Int
@@ -381,24 +369,24 @@ runProg :: Prog -> Maybe (Env Val)
 runProg p = if typeProg p then Just (evalProg p)
                         else Nothing
 
-prettyExp :: Exp -> String
-
-
-prettyStmt :: Stmt -> String
+-- prettyExp :: Exp -> String
+--
+--
+-- prettyStmt :: Stmt -> String
 
 
 prettyDec :: [Decl] -> String
 prettyDec []      = []
 prettyDec ((v,TInt):p) = "Variable " ++ v ++ " declared as an Int" ++ prettyDec p ++ "\n"
 prettyDec ((v, TBool): p) = "Variable " ++ v ++ "declared as a TBool" ++ prettyDec p ++ "\n"
-prettyDec ((v, HState): p) = "Variable " ++ v ++ "declared as an HState" ++ prettyDec p "\n"
+prettyDec ((v, HState): p) = "Variable " ++ v ++ "declared as an HState" ++ prettyDec p ++ "\n"
 
-prettyProg :: Prog -> String
-prettyProg (P d s) =
+-- prettyProg :: Prog -> String
+-- prettyProg (P d s) =
 
 runPretty :: Prog -> String
 runPretty p = if typeProg p then prettyProg p
-                    else = "Type error: Could not verify program types"
+                    else "Type error: Could not verify program types"
 
 
 prettyExp :: Exp -> String
