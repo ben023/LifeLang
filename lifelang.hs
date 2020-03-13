@@ -3,7 +3,6 @@ module Lifelang where
 import Data.Map (Map,fromList,lookup,insert)
 import Data.Maybe
 import Prelude hiding (lookup)
---import           Data.List
 
 type Pos = Int
 type Health = Int
@@ -12,11 +11,6 @@ type Func = String
 
 type HState = (Pos, Health, Stamina)
 
---data Result = OK HState
---            | Dead Pos
---            | Error
---            | B Bool
---        deriving(Eq, Show)
 
 type Var = String
 
@@ -38,7 +32,6 @@ data Stmt = Bind String Exp
           | If Exp Stmt Stmt
           | While Exp Stmt
           | Block [Stmt]
-        --  | Let Var Exp Exp
     deriving(Eq,Show)
 
 
@@ -49,7 +42,6 @@ exFunct :: Exp
 exFunct = Let "sleep" (Fun "number_of_rests" (Rest (Ref "startState") (Ref "number_of_rests")))
                   (App (Ref "sleep") (Lit 5))
 
--- Bind "startState" (Rest (Ref "startState") (Lit 1))
 
 type Decl = (Var, Type)
 
@@ -83,9 +75,7 @@ ex2 = P [("startState", HState)]
 
         ])
 
--- example for reaching a dead state
--- Human walks to death, walks 200 units which removes all stamina and health
--- Returns Just (fromList [("startState",Dead)])
+
 ex3 :: Prog
 ex3 = P [("startState", HState)]
         (Block [
@@ -100,9 +90,7 @@ ex3 = P [("startState", HState)]
         ])
 
 
--- example for human walking enough to take damange
--- Human over 100 units, which damanges his health
--- Returns Just (fromList [("startState",HS (150,50,0))])
+
 ex4 :: Prog
 ex4 = P [("startState", HState)]
         (Block [
@@ -204,11 +192,7 @@ evalExpr (Ref x)   m = case lookup x m of
 evalExpr (Fun v e)     m = F v e
 evalExpr (Let x y z)   m = case evalFun y m of
                            (v,e) -> evalExpr z (insert v (evalExpr e m) m)
--- evalExpr (App l r)     m = case
 
-
-
--- insert x (evalExpr e m) m
 
 evalFun :: Exp -> Env Val -> (Var, Exp)
 evalFun e m = case (evalExpr e m) of
@@ -229,16 +213,12 @@ evalInt e m = case evalExpr e m of
                 _ -> error "internal error: expected int, got bool or hstate"
 
 
--- | Helper function to evaluate an expression to a Boolean.
 evalBool :: Exp -> Env Val -> Bool
 evalBool e m = case evalExpr e m of
                  B b -> b
                  _  -> error "internal error: expected Bool, got int or hstate"
 
--- | Semantics of statements. Statements update the bindings in the
---   environment, so the semantic domain is 'Env Val -> Env Val'. The
---   bind case is the case that actually changes the environment. The
---   other cases should look similar to other examples you've seen.
+
 evalStmt :: Stmt -> Env Val -> Env Val
 evalStmt (Bind x e)   m = insert x (evalExpr e m) m
 evalStmt (If c st se) m = if evalBool c m
@@ -248,28 +228,12 @@ evalStmt (While c sb) m = if evalBool c m
                         then evalStmt (While c sb) (evalStmt sb m)
                         else m
 evalStmt (Block ss)   m = evalStmts ss m
--- evalStmt (Let x b e)  m | HS hs <- evalExpr b m = (insert x (HS hs) m)
 
--- exFunct :: Stmt
--- exFunct = Let
--- "sleep"
--- (Fun "number_of_rests" (Rest (Ref "startState") (Ref "number_of_rests")))
--- (App (Ref "sleep") (Lit 5))
-
--- type Env a = Map Var a
-
--- = case evalStmt b m of
-  --                      Map v -> evalStmt e (insert x (evalExpr v m) m)
--- | (p, h, s) <- evalHS e m = HS (p+(evalInt distanceGained m), h, s-(evalInt distanceGained m))
--- | Helper function to evaluate a list of statements. We could also
---   have used 'foldl' here.
 evalStmts :: [Stmt] -> Env Val -> Env Val
 evalStmts []     m = m
 evalStmts (s:ss) m = evalStmts ss (evalStmt s m)
 
--- | Semantics of programs. This runs a program with an initial
---   environment where all integer variables are initialized to 0, and
---   all Boolean variables are initialized to false.
+
 evalProg :: Prog -> Env Val
 evalProg (P ds s) = evalStmt s m
  where
@@ -278,7 +242,6 @@ evalProg (P ds s) = evalStmt s m
   init TBool = B False
   init HState = HS (0,0,0)
 
--- | Type check and then run a program.
 runProg :: Prog -> Maybe (Env Val)
 runProg p = if typeProg p then Just (evalProg p)
                         else Nothing
@@ -288,7 +251,6 @@ prettyExp :: Exp -> String
 prettyExp (Ref v) = v
 prettyExp (Lit n) = show n
 prettyExp (Dec hst) = " Player's stats initialized to : " ++ show hst ++ " (Position, health, stamina) . . ."
--- prettyExp (Dec hst) = show hst ++ " (Position, health, stamina)) "
 prettyExp (Damage l r) = " (Player was damaged and took " ++ prettyExp r ++ " damage ) . . ."
 prettyExp (Eat l r) = " (Player ate and healed for " ++ prettyExp r ++ ") . . ."
 prettyExp (Rest l r) = " (Player rested and healed for " ++ prettyExp r ++ ") . . ."
@@ -338,28 +300,6 @@ exprettyStory = prettyExp (Dec (0, 100, 100)) ++ prettyExp (Damage(Lit 10) (Lit 
 
 
 
-{- There needs to be an example implemented for this will implement soon. -}
-
-{- This might not be needed, as we have prettyExp which prints out the state of the player.
-prettyStmt :: Stmt -> String
-prettyStmt (Bind str e) = "Bound string" ++ prettyExp str -}
-
-{- prettyDec :: [Decl] -> String
-prettyDec []      = []
-prettyDec ((v,TInt):p) = "Variable " ++ v ++ " declared as an Int" ++ prettyDec p ++ "\n"
-prettyDec ((v, TBool): p) = "Variable " ++ v ++ "declared as a TBool" ++ prettyDec p ++ "\n"
-prettyDec ((v, HState): p) = "Variable " ++ v ++ "declared as an HState" ++ prettyDec p "\n" -}
-
-
-{- runPretty :: Prog -> String
-runPretty p = if typeProg p then prettyProg p
-                    else = "Type error: Could not verify program types" -}
-
-
-
-
--- FUNCTIONS
-
 ex5 :: Prog
 ex5 = P [("restTime", TInt), ("startState", HState)]
         (Block [
@@ -370,14 +310,18 @@ ex5 = P [("restTime", TInt), ("startState", HState)]
 
         ])
 
-insertFunction :: Int -> Prog
-insertFunction s = P [("restTime", TInt), ("startState", HState)]
+ex7 :: Prog
+ex7 = P [("restTime", TInt), ("startState", HState)]
         (Block [
            Bind "restTime" (Lit 5),
            Bind "startState" (Dec (0,100,100)),
-           While (IsAlive (Ref "startState")) (Block (sleep s))
+           While (IsAlive (Ref "startState"))
+           (insertFunction ((sleep 10) ++ [Bind "startState" (Damage (Ref "startState") (Lit 10))]))
+
         ])
 
+insertFunction :: [Stmt] -> Stmt
+insertFunction x = Block x
 
 
 insertEx1 :: [Stmt]
@@ -386,3 +330,26 @@ insertEx1 = sleep 5
 sleep :: Int -> [Stmt]
 sleep 0 = [Bind "startState" (Rest (Ref "startState") (Lit 1))]
 sleep n = [(Bind "startState" (Rest (Ref "startState") (Lit 1)))] ++ sleep (subtract 1 n)
+
+
+sprint :: Int -> [Stmt]
+sprint 0 = [Bind "startState" (Walk (Ref "startState") (Lit 1))]
+sprint n = [(Bind "startState" (Walk (Ref "startState") (Lit 1)))] ++ sprint (subtract 1 n)
+
+
+feast :: Int -> [Stmt]
+feast 0 = [Bind "startState" (Eat (Ref "startState") (Lit 1))]
+feast n = [(Bind "startState" (Eat (Ref "startState") (Lit 1)))] ++ feast (subtract 1 n)
+
+
+hibernate :: Int -> [Stmt]
+hibernate n = feast n ++ sleep n
+
+oregon_trail :: Int -> [Stmt]
+oregon_trail n = feast n ++ sleep n ++ sprint n
+
+poor_health :: Int -> [Stmt]
+poor_health n = sleep n ++ [Bind "startState" (Damage (Ref "startState") (Lit n))]
+
+-- sleep 0 = [Bind "startState" (Rest (Ref "startState") (Lit 1))]
+-- sleep n = [(Bind "startState" (Rest (Ref "startState") (Lit 1)))] ++ sleep (subtract 1 n)
