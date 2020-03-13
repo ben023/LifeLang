@@ -37,6 +37,6 @@ This good example initializes the starting state of the human. Then, while the h
 This bad example tries to Bind "startState" to a HState after it has already been declared as a TInt. This is caught by the typeStmt as it checks that the types that Bind returns are of the same type.
 
 ![Running example 4](https://i.imgur.com/vsu2PwJ.png)
-![Running example 4](https://i.imgur.com/7JbemSdpng)
+![Running example 4](https://i.imgur.com/7JbemSd.png)
 
 This bad example shows what happens when there is a type error. The type error arises from the “Ref “nonExistentState”” that tries to reference a variable that hasn’t been declared yet. This is caught by typeExpr that looks up the referenced variable in the environment and returns nothing because it doesn’t exist.
