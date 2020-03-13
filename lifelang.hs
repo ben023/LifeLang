@@ -83,6 +83,49 @@ ex2 = P [("startState", HState)]
 
         ])
 
+-- example for reaching a dead state
+-- Human walks to death, walks 200 units which removes all stamina and health
+-- Returns Just (fromList [("startState",Dead)])
+ex3 :: Prog
+ex3 = P [("startState", HState)]
+        (Block [
+          Bind "startState" (Dec (0, 100, 100)),
+          (Block [
+              Bind "startState" (Walk (Ref "startState") (Lit 50)),
+              Bind "startState" (Walk (Ref "startState") (Lit 50)),
+              Bind "startState" (Walk (Ref "startState") (Lit 50)),
+              Bind "startState" (Walk (Ref "startState") (Lit 50))
+          ])
+
+        ])
+
+
+-- example for human walking enough to take damange
+-- Human over 100 units, which damanges his health
+-- Returns Just (fromList [("startState",HS (150,50,0))])
+ex4 :: Prog
+ex4 = P [("startState", HState)]
+        (Block [
+          Bind "startState" (Dec (0, 100, 100)),
+          (Block [
+              Bind "startState" (Walk (Ref "startState") (Lit 50)),
+              Bind "startState" (Walk (Ref "startState") (Lit 50)),
+              Bind "startState" (Walk (Ref "startState") (Lit 50))
+          ])
+        ])
+
+
+ex6 :: Prog
+ex6 = P [("startState", HState)]
+        (Block [
+          Bind "startState" (Dec (0, 100, 100)),
+          (Block [
+              Bind "startState" (Walk (Ref "startState") (Lit 200)),
+              Bind "startState" (Walk (Ref "startState") (Lit 50))
+          ])
+        ])
+
+
 type Env a = Map Var a
 
 typeExpr :: Exp -> Env Type -> Maybe Type
@@ -134,13 +177,20 @@ evalExpr :: Exp -> Env Val -> Val
 evalExpr (Dec hs)       _ = HS hs
 evalExpr (Lit i)        _ = I i
 evalExpr (Damage e damageDone) m
-                          | (p, h, s) <- evalHS e m = HS (p, h-(evalInt damageDone m), s)
+                          | (p, h, s) <- evalHS e m =
+                            if h-(evalInt damageDone m) <= 0 then
+                            HS (p, 0, s) else HS (p, h-(evalInt damageDone m), s)
 evalExpr (Eat e healthGained) m
+                          | (p, 0, s) <- evalHS e m = HS (p, 0, s)
                           | (p, h, s) <- evalHS e m = HS (p, h+(evalInt healthGained m), s)
 evalExpr (Rest e staminaGained) m
+                          | (p, 0, s) <- evalHS e m = HS (p, 0, s)
                           | (p, h, s) <- evalHS e m = HS (p, h, s+(evalInt staminaGained m))
 evalExpr (Walk e distanceGained) m
-                          | (p, h, s) <- evalHS e m = HS (p+(evalInt distanceGained m), h, s-(evalInt distanceGained m))
+                          | (p, 0, s) <- evalHS e m = HS (p, 0, s)
+                          | (p, h, s) <- evalHS e m = if s-(evalInt distanceGained m) < 0 then
+                                                      evalExpr (Damage (Dec (p+((evalInt distanceGained m) - s), h, 0)) (Lit ((evalInt distanceGained m) - s))) m
+                                                      else HS (p+(evalInt distanceGained m), h, s-(evalInt distanceGained m))
 evalExpr (HasStamina e) m
                           | (p, h, s) <- evalHS e m = B (s > 0)
                           | _ <- evalHS e m = B False
@@ -310,8 +360,8 @@ runPretty p = if typeProg p then prettyProg p
 
 -- FUNCTIONS
 
-ex4 :: Prog
-ex4 = P [("restTime", TInt), ("startState", HState)]
+ex5 :: Prog
+ex5 = P [("restTime", TInt), ("startState", HState)]
         (Block [
            Bind "restTime" (Lit 5),
            Bind "startState" (Dec (0,100,100)),
