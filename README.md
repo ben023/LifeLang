@@ -17,6 +17,7 @@ Declarations have the general format (Var, Type) in which Var is a string and Ty
   
 To run a program, create a Prog then runProg "Your Prog"  
 To print the contents of a Prog, type prettyProg "Your Prog"  
+We also have helper functions that run our examples. One example of these is "runEx1"
   
 ### Examples:  
 ![Good example 1](https://i.imgur.com/gQNrQOQ.png)
