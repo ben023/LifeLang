@@ -11,7 +11,6 @@ type Func = String
 
 type HState = (Pos, Health, Stamina)
 
-
 type Var = String
 
 data Exp = Dec HState
@@ -23,9 +22,6 @@ data Exp = Dec HState
          | HasStamina Exp
          | IsAlive Exp
          | Ref String
-         | Fun Var Exp
-         | App Exp Exp
-         | Let Var Exp Exp
    deriving(Eq,Show)
 
 data Stmt = Bind String Exp
@@ -38,19 +34,17 @@ data Stmt = Bind String Exp
 data Type = TInt | TBool | HState
     deriving(Eq,Show)
 
-exFunct :: Exp
-exFunct = Let "sleep" (Fun "number_of_rests" (Rest (Ref "startState") (Ref "number_of_rests")))
-                  (App (Ref "sleep") (Lit 5))
-
 
 type Decl = (Var, Type)
-
 data Prog = P [Decl] Stmt
 
+
+-- Good Examples of programs
+
+-- ex1: This program initializes a start state with 100 health and  
 ex1 :: Prog
 ex1 = P [("restTime", TInt), ("startState", HState)]
         (Block [
-           Bind "restTime" (Lit 5),
            Bind "startState" (Dec (0,100,100)),
            While (IsAlive (Ref "startState"))
            (Block [
@@ -102,6 +96,16 @@ ex4 = P [("startState", HState)]
           ])
         ])
 
+ex5 :: Prog
+ex5 = P [("restTime", TInt), ("startState", HState)]
+        (Block [
+           Bind "restTime" (Lit 5),
+           Bind "startState" (Dec (0,100,100)),
+           While (IsAlive (Ref "startState"))
+           (Block (sleep 3))
+
+        ])
+
 
 ex6 :: Prog
 ex6 = P [("startState", HState)]
@@ -112,6 +116,87 @@ ex6 = P [("startState", HState)]
               Bind "startState" (Walk (Ref "startState") (Lit 50))
           ])
         ])
+
+
+
+
+ex7 :: Prog
+ex7 = P [("restTime", TInt), ("startState", HState)]
+        (Block [
+           Bind "restTime" (Lit 5),
+           Bind "startState" (Dec (0,100,100)),
+           While (IsAlive (Ref "startState"))
+           (insertFunction ((sleep 10) ++ [Bind "startState" (Damage (Ref "startState") (Lit 10))]))
+
+        ])
+
+-- ex8: This program initializes a start state with 100 health and  
+ex8 :: Prog
+ex8 = P [("restTime", TInt), ("startState", HState)]
+        (Block [
+           Bind "startState" (Dec (0,100,100)),
+           While (IsAlive (Ref "startState"))
+           (Block [
+               Bind "startState" (Damage (Ref "nonExistentState") (Lit 10)),
+               Bind "startState" (Damage (Ref "startState") (Lit 10))
+           ])
+        ])
+
+-- Various examples of running the pretty print functions on Expressions
+
+exprettyDec :: String
+exprettyDec = prettyExp (Dec (0, 100, 100))
+
+exprettyDamage :: String
+exprettyDamage  =  prettyExp (Damage (Lit 1)  (Lit 2))
+
+exprettyEat :: String
+exprettyEat = prettyExp (Eat (Lit 10) (Lit 60))
+
+exprettyRest :: String
+exprettyRest = prettyExp (Rest (Lit 10) (Lit 70))
+
+exprettyWalk :: String
+exprettyWalk = prettyExp (Walk (Lit 0) (Lit 1))
+
+exprettyStam :: String
+exprettyStam = prettyExp (HasStamina (Lit 100))
+
+exprettyAlive :: String
+exprettyAlive = prettyExp (IsAlive (Lit 1))
+
+exprettyStory :: String
+exprettyStory = prettyExp (Dec (0, 100, 100)) ++ prettyExp (Damage(Lit 10) (Lit 90)) ++ "\n" ++
+                prettyExp (Rest (Lit 10) (Lit 100)) ++ prettyExp (Walk (Lit 0) (Lit 1)) ++ "\n" ++
+                prettyExp (HasStamina(Lit 99)) ++ prettyExp (Damage (Lit 20) (Lit 80)) ++ "\n"
+
+
+-- 
+
+-- Various examples of running the pretty print functions on Programs
+
+prettyEx1 :: String
+prettyEx1 = prettyProg ex1
+
+prettyEx2 :: String
+prettyEx2 = prettyProg ex2
+
+prettyEx3 :: String
+prettyEx3 = prettyProg ex3
+
+prettyEx4 :: String
+prettyEx4 = prettyProg ex4
+
+prettyEx5 :: String
+prettyEx5 = prettyProg ex5
+
+prettyEx6 :: String
+prettyEx6 = prettyProg ex6
+
+prettyEx7 :: String
+prettyEx7 = prettyProg ex7
+
+-- 
 
 
 type Env a = Map Var a
@@ -186,20 +271,6 @@ evalExpr (IsAlive e)    m
                           | (p, h, s) <- evalHS e m = B (h > 0)
                           | _ <- evalHS e m = B False
 
-evalExpr (Ref x)   m = case lookup x m of
-                         Just v  -> v
-                         Nothing -> error "internal error: undefined variable"
-evalExpr (Fun v e)     m = F v e
-evalExpr (Let x y z)   m = case evalFun y m of
-                           (v,e) -> evalExpr z (insert v (evalExpr e m) m)
-
-
-evalFun :: Exp -> Env Val -> (Var, Exp)
-evalFun e m = case (evalExpr e m) of
-                F v e -> (v, e)
-                _  -> error "internal error: expected F, got bool or int"
-
-
 
 evalHS :: Exp -> Env Val -> HState
 evalHS e m = case (evalExpr e m) of
@@ -257,7 +328,6 @@ prettyExp (Rest l r) = " (Player rested and healed for " ++ prettyExp r ++ ") . 
 prettyExp (Walk l r) = " (Player walked " ++ prettyExp r ++ " steps forward) . . ."
 prettyExp (HasStamina h) = " (Player has stamina : " ++ prettyExp h ++ ") . . ."
 prettyExp (IsAlive a) = " (Player's live state is : " ++ prettyExp a ++ ") . . ."
-prettyExp _      = []
 
 prettyStmt :: Stmt -> String
 prettyStmt (Bind v e) = case e of
@@ -271,55 +341,12 @@ prettyStmt _ = ""
 prettyProg :: Prog -> String
 prettyProg (P _ s) = prettyStmt s
 
-exprettyDec :: String
-exprettyDec = prettyExp (Dec (0, 100, 100))
-
-exprettyDamage :: String
-exprettyDamage  =  prettyExp (Damage (Lit 1)  (Lit 2))
-
-exprettyEat :: String
-exprettyEat = prettyExp (Eat (Lit 10) (Lit 60))
-
-exprettyRest :: String
-exprettyRest = prettyExp (Rest (Lit 10) (Lit 70))
-
-exprettyWalk :: String
-exprettyWalk = prettyExp (Walk (Lit 0) (Lit 1))
-
-exprettyStam :: String
-exprettyStam = prettyExp (HasStamina (Lit 100))
-
-exprettyAlive :: String
-exprettyAlive = prettyExp (IsAlive (Lit 1))
-
-exprettyStory :: String
-exprettyStory = prettyExp (Dec (0, 100, 100)) ++ prettyExp (Damage(Lit 10) (Lit 90)) ++ "\n" ++
-                prettyExp (Rest (Lit 10) (Lit 100)) ++ prettyExp (Walk (Lit 0) (Lit 1)) ++ "\n" ++
-                prettyExp (HasStamina(Lit 99)) ++ prettyExp (Damage (Lit 20) (Lit 80)) ++ "\n"
 
 
 
 
-ex5 :: Prog
-ex5 = P [("restTime", TInt), ("startState", HState)]
-        (Block [
-           Bind "restTime" (Lit 5),
-           Bind "startState" (Dec (0,100,100)),
-           While (IsAlive (Ref "startState"))
-           (Block (sleep 3))
 
-        ])
-
-ex7 :: Prog
-ex7 = P [("restTime", TInt), ("startState", HState)]
-        (Block [
-           Bind "restTime" (Lit 5),
-           Bind "startState" (Dec (0,100,100)),
-           While (IsAlive (Ref "startState"))
-           (insertFunction ((sleep 10) ++ [Bind "startState" (Damage (Ref "startState") (Lit 10))]))
-
-        ])
-
+-- Functions 
 insertFunction :: [Stmt] -> Stmt
 insertFunction x = Block x
 
@@ -351,5 +378,4 @@ oregon_trail n = feast n ++ sleep n ++ sprint n
 poor_health :: Int -> [Stmt]
 poor_health n = sleep n ++ [Bind "startState" (Damage (Ref "startState") (Lit n))]
 
--- sleep 0 = [Bind "startState" (Rest (Ref "startState") (Lit 1))]
--- sleep n = [(Bind "startState" (Rest (Ref "startState") (Lit 1)))] ++ sleep (subtract 1 n)
+-- 
